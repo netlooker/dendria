@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Project directories
+vault/
+
+# Project directories
+vault/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
