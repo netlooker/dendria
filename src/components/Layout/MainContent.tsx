@@ -1,8 +1,16 @@
 import { useFileSystem } from '../../context/FileSystemContext';
 import { FolderOpen, AlertTriangle, FileText } from 'lucide-react';
+import NoteEditor from '../Editor/NoteEditor';
 
 const MainContent = () => {
-  const { permissionState, directoryHandle } = useFileSystem();
+  const { 
+    permissionState, 
+    directoryHandle, 
+    activeFileHandle, 
+    activeFileContent, 
+    isFileContentLoading, 
+    errorMessage 
+  } = useFileSystem();
 
   return (
     <div className="flex-1 h-screen overflow-auto p-6">
@@ -27,16 +35,26 @@ const MainContent = () => {
       )}
 
       {permissionState === 'granted' && directoryHandle && (
-        <div className="flex flex-col items-center justify-center h-full">
-          <FileText size={64} className="text-green-600 mb-4" />
-          <h2 className="text-2xl font-semibold mb-2">Vault Connected</h2>
-          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
-            Ready to work with your notes in <strong>{directoryHandle.name}</strong>
-          </p>
-          <p className="text-gray-500 dark:text-gray-500 text-sm mt-4">
-            Note editor will appear here in future versions
-          </p>
-        </div>
+        <>
+          {!activeFileHandle ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <FileText size={64} className="text-green-600 mb-4" />
+              <h2 className="text-2xl font-semibold mb-2">Vault Connected</h2>
+              <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+                Ready to work with your notes in <strong>{directoryHandle.name}</strong>
+              </p>
+              <p className="text-gray-500 dark:text-gray-500 text-sm mt-4">
+                Select a note from the sidebar to view its content
+              </p>
+            </div>
+          ) : (
+            <NoteEditor 
+              content={activeFileContent} 
+              isLoading={isFileContentLoading} 
+              error={errorMessage} 
+            />
+          )}
+        </>
       )}
 
       {permissionState === 'loading' && (

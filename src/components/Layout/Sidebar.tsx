@@ -2,9 +2,14 @@ import { FolderTree } from 'lucide-react';
 import VaultSelector from '../Vault/VaultSelector';
 import HierarchyView from '../Hierarchy/HierarchyView';
 import { useFileSystem } from '../../context/FileSystemContext';
+import { VaultFile } from '../../types/hierarchy';
 
 const Sidebar = () => {
-  const { hierarchyData, isHierarchyLoading, permissionState } = useFileSystem();
+  const { hierarchyData, isHierarchyLoading, permissionState, setActiveFile } = useFileSystem();
+  
+  const handleFileSelect = (file: VaultFile) => {
+    setActiveFile(file.handle);
+  };
   
   return (
     <div className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col dark:bg-gray-800 dark:border-gray-700">
@@ -23,7 +28,8 @@ const Sidebar = () => {
         {permissionState === 'granted' ? (
           <HierarchyView 
             hierarchyData={hierarchyData} 
-            isLoading={isHierarchyLoading} 
+            isLoading={isHierarchyLoading}
+            onFileSelect={handleFileSelect}
           />
         ) : (
           <div className="p-4">

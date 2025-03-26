@@ -13,6 +13,11 @@ export interface FileSystemContextType {
   errorMessage: string | null;
   hierarchyData: VaultEntry[] | null;
   isHierarchyLoading: boolean;
+  activeFileHandle: FileSystemFileHandle | null;
+  activeFileContent: string | null;
+  isFileContentLoading: boolean;
   selectDirectory: () => Promise<void>;
   readVaultHierarchy: () => Promise<void>;
+  setActiveFile: (handle: FileSystemFileHandle | null) => void;
+  readFileContent: (handle: FileSystemFileHandle) => Promise<string | null>;
 }

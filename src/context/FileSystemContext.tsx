@@ -10,8 +10,13 @@ const FileSystemContext = createContext<FileSystemContextType>({
   errorMessage: null,
   hierarchyData: null,
   isHierarchyLoading: false,
+  activeFileHandle: null,
+  activeFileContent: null,
+  isFileContentLoading: false,
   selectDirectory: async () => {},
   readVaultHierarchy: async () => {},
+  setActiveFile: () => {},
+  readFileContent: async () => null,
 });
 
 // Provider component
@@ -21,6 +26,9 @@ export const FileSystemProvider = ({ children }: { children: ReactNode }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hierarchyData, setHierarchyData] = useState<VaultEntry[] | null>(null);
   const [isHierarchyLoading, setIsHierarchyLoading] = useState<boolean>(false);
+  const [activeFileHandle, setActiveFileHandle] = useState<FileSystemFileHandle | null>(null);
+  const [activeFileContent, setActiveFileContent] = useState<string | null>(null);
+  const [isFileContentLoading, setIsFileContentLoading] = useState<boolean>(false);
 
   // Check or request permission for a directory handle
   const checkPermission = useCallback(async (handle: FileSystemDirectoryHandle, request = false) => {
@@ -278,6 +286,45 @@ export const FileSystemProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [directoryHandle, permissionState]);
 
+  // Function to read file content
+  const readFileContent = useCallback(async (handle: FileSystemFileHandle): Promise<string | null> => {
+    try {
+      setIsFileContentLoading(true);
+      setErrorMessage(null);
+      
+      // Get the File object from the handle
+      const file = await handle.getFile();
+      
+      // Read the file content as text
+      const content = await file.text();
+      
+      // Update the content state
+      setActiveFileContent(content);
+      
+      return content;
+    } catch (error) {
+      console.error('Error reading file content:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Unknown error reading file content');
+      setActiveFileContent(null);
+      return null;
+    } finally {
+      setIsFileContentLoading(false);
+    }
+  }, []);
+
+  // Function to set active file and read its content
+  const setActiveFile = useCallback((handle: FileSystemFileHandle | null) => {
+    setActiveFileHandle(handle);
+    
+    if (handle) {
+      // Read the content of the selected file
+      readFileContent(handle);
+    } else {
+      // Clear the content if no file is selected
+      setActiveFileContent(null);
+    }
+  }, [readFileContent]);
+
   // Context value
   const value = {
     directoryHandle,
@@ -285,8 +332,13 @@ export const FileSystemProvider = ({ children }: { children: ReactNode }) => {
     errorMessage,
     hierarchyData,
     isHierarchyLoading,
+    activeFileHandle,
+    activeFileContent,
+    isFileContentLoading,
     selectDirectory,
     readVaultHierarchy,
+    setActiveFile,
+    readFileContent,
   };
 
   return (
