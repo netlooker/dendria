@@ -176,57 +176,47 @@ export const FileSystemProvider = ({ children }: { children: ReactNode }) => {
 
   // Function to build a color-coded flat hierarchy based on dot notation
   const buildVirtualHierarchy = (files: VaultFile[]): VaultEntry[] => {
-    // First, collect all existing file paths
-    const existingFilePaths = new Set<string>();
-    const flatEntries: VaultEntry[] = [];
+    // Map to track all paths (both real and virtual)
+    const entriesMap = new Map<string, VaultEntry & { hasNote: boolean }>(); 
     
     // Sort files to ensure consistent ordering
     const sortedFiles = [...files].sort((a, b) => a.name.localeCompare(b.name));
     
-    // Process all files and add them to the map
+    // First, create all parent paths that we'll need
     sortedFiles.forEach(file => {
       const basename = file.name.replace(/\.md$/, '');
-      existingFilePaths.add(basename);
-      
       const segments = basename.split('.');
-      const depth = segments.length;
       
-      // Add the actual file
-      const fileEntry: VaultFile & { depth: number; hasNote: boolean } = {
-        ...file,
-        name: basename,
-        path: basename,
-        kind: 'file',
-        depth,
-        hasNote: true
-      };
-      
-      flatEntries.push(fileEntry);
-      
-      // Generate parent paths for this file that might not exist
-      for (let i = 1; i < depth; i++) {
-        const parentPath = segments.slice(0, i).join('.');
-        // Only add if we haven't already recorded this path
-        if (!existingFilePaths.has(parentPath)) {
-          existingFilePaths.add(parentPath);
+      // Create parent paths as needed
+      for (let i = 1; i <= segments.length; i++) {
+        const currentPath = segments.slice(0, i).join('.');
+        const depth = i;
+        
+        // If this path doesn't exist yet, create it
+        if (!entriesMap.has(currentPath)) {
+          // Is this an actual file path or just a parent?
+          const isActualFile = i === segments.length;
           
-          // Create a virtual file entry for this parent level
-          const virtualParent: VaultFile & { depth: number; hasNote: boolean } = {
-            name: parentPath,
-            path: parentPath,
+          entriesMap.set(currentPath, {
+            name: currentPath,
+            path: currentPath,
             kind: 'file',
-            handle: {} as FileSystemFileHandle, // Just a placeholder
-            depth: i,
-            hasNote: false // This parent doesn't have an actual file
-          };
-          
-          flatEntries.push(virtualParent);
+            handle: isActualFile ? file.handle : ({} as FileSystemFileHandle),
+            depth,
+            hasNote: isActualFile // Only actual files have notes
+          });
+        } else if (i === segments.length) {
+          // If this is a full path and it already exists as a parent-only node,
+          // update it to mark that it has a note and add the proper handle
+          const existingEntry = entriesMap.get(currentPath)!;
+          existingEntry.hasNote = true;
+          existingEntry.handle = file.handle;
         }
       }
     });
     
-    // Sort by path to get proper hierarchy ordering
-    return flatEntries.sort((a, b) => a.path.localeCompare(b.path));
+    // Convert map to array and sort
+    return Array.from(entriesMap.values()).sort((a, b) => a.path.localeCompare(b.path));
   };
 
   // Function to read vault hierarchy

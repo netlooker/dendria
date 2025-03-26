@@ -16,11 +16,12 @@ const HierarchyNode: FC<{
   // Calculate indentation based on the path depth
   const getIndentation = (name: string) => {
     const segments = name.split('.');
-    return `${0.75 + ((segments.length - 1) * 0.5)}rem`;
+    const depth = segments.length - 1;
+    return depth === 0 ? '0.75rem' : `${0.75 + (depth * 0.75) - 0.5}rem`;
   };
   
   // Determine color based on depth level
-  const getIconColor = (depth = 1, hasNote = true) => {
+  const getIconColor = (depth = 1) => {
     // Base colors by level
     const colors = [
       'text-blue-500',      // Level 1
@@ -33,9 +34,7 @@ const HierarchyNode: FC<{
     
     // Fallback to last color for deeper levels
     const colorIndex = Math.min(depth - 1, colors.length - 1);
-    
-    // Return grayed out version if this level doesn't have a note
-    return hasNote ? colors[colorIndex] : 'text-gray-400';
+    return colors[colorIndex];
   };
   
   // Helper to format the display name
@@ -58,14 +57,21 @@ const HierarchyNode: FC<{
         style={{ paddingLeft: getIndentation(entry.name) }}
         onClick={hasNote && onFileSelect ? () => onFileSelect(entry as VaultFile) : undefined}
       >
-        <FileText 
-          size={13} 
-          className={`flex-shrink-0 ${getIconColor(depth, hasNote)}`} 
-        />
-        
-        <span className={`font-medium ${!hasNote ? 'text-gray-500 dark:text-gray-400' : ''}`}>
-          {formatDisplayName(entry.name)}
-        </span>
+        <div className="flex items-center gap-1">
+          {/* Tree connector */}
+          {entry.name.includes('.') && (
+            <span className="text-gray-400 mr-0.5">└─</span>
+          )}
+          
+          <FileText 
+            size={13} 
+            className={`flex-shrink-0 ${hasNote ? getIconColor(depth) : 'text-gray-400'}`} 
+          />
+          
+          <span className={`font-medium ${!hasNote ? 'text-gray-500 dark:text-gray-400' : ''}`}>
+            {formatDisplayName(entry.name)}
+          </span>
+        </div>
       </div>
     </li>
   );
