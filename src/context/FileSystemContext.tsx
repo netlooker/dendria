@@ -174,88 +174,59 @@ export const FileSystemProvider = ({ children }: { children: ReactNode }) => {
     return files;
   };
 
-  // Function to build a virtual hierarchy based on dot notation in filenames
+  // Function to build a color-coded flat hierarchy based on dot notation
   const buildVirtualHierarchy = (files: VaultFile[]): VaultEntry[] => {
-    const root: VaultEntry[] = [];
-    // Map to track virtual directories by path
-    const directories = new Map<string, VaultDirectory>();
+    // First, collect all existing file paths
+    const existingFilePaths = new Set<string>();
+    const flatEntries: VaultEntry[] = [];
     
-    // Process each file
-    files.forEach(file => {
-      // Extract the basename and remove .md extension
+    // Sort files to ensure consistent ordering
+    const sortedFiles = [...files].sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Process all files and add them to the map
+    sortedFiles.forEach(file => {
       const basename = file.name.replace(/\.md$/, '');
-      // Split by dots to get hierarchical segments
+      existingFilePaths.add(basename);
+      
       const segments = basename.split('.');
+      const depth = segments.length;
       
-      let currentLevel = root;
-      let currentPath = '';
-      
-      // Process all segments except the last one (which is the filename)
-      for (let i = 0; i < segments.length - 1; i++) {
-        const segment = segments[i];
-        currentPath = currentPath ? `${currentPath}.${segment}` : segment;
-        
-        // Look for existing directory at this level
-        let dir = currentLevel.find(
-          entry => entry.kind === 'directory' && entry.name === segment
-        ) as VaultDirectory | undefined;
-        
-        // Create directory if it doesn't exist
-        if (!dir) {
-          // Create a virtual directory handle (this won't be used for actual file operations)
-          const virtualDirHandle = {} as FileSystemDirectoryHandle;
-          
-          dir = {
-            name: segment,
-            path: currentPath,
-            kind: 'directory',
-            handle: virtualDirHandle,
-            children: []
-          };
-          
-          currentLevel.push(dir);
-          directories.set(currentPath, dir);
-        }
-        
-        // Move to the next level (children of current directory)
-        currentLevel = dir.children;
-      }
-      
-      // Add the file to the current level
-      // The last segment becomes the display name
-      const displayName = segments[segments.length - 1];
-      
-      const fileEntry: VaultFile = {
+      // Add the actual file
+      const fileEntry: VaultFile & { depth: number; hasNote: boolean } = {
         ...file,
-        name: displayName // Override name with the leaf segment
+        name: basename,
+        path: basename,
+        kind: 'file',
+        depth,
+        hasNote: true
       };
       
-      currentLevel.push(fileEntry);
+      flatEntries.push(fileEntry);
+      
+      // Generate parent paths for this file that might not exist
+      for (let i = 1; i < depth; i++) {
+        const parentPath = segments.slice(0, i).join('.');
+        // Only add if we haven't already recorded this path
+        if (!existingFilePaths.has(parentPath)) {
+          existingFilePaths.add(parentPath);
+          
+          // Create a virtual file entry for this parent level
+          const virtualParent: VaultFile & { depth: number; hasNote: boolean } = {
+            name: parentPath,
+            path: parentPath,
+            kind: 'file',
+            handle: {} as FileSystemFileHandle, // Just a placeholder
+            depth: i,
+            hasNote: false // This parent doesn't have an actual file
+          };
+          
+          flatEntries.push(virtualParent);
+        }
+      }
     });
     
-    // Sort the hierarchy at each level
-    const sortEntries = (entries: VaultEntry[]): VaultEntry[] => {
-      // Sort entries: directories first, then files, both alphabetically
-      const sorted = entries.sort((a, b) => {
-        // If types are different, directories come first
-        if (a.kind !== b.kind) {
-          return a.kind === 'directory' ? -1 : 1;
-        }
-        // If types are the same, sort alphabetically by name
-        return a.name.localeCompare(b.name);
-      });
-      
-      // Recursively sort children of directories
-      sorted
-        .filter((entry): entry is VaultDirectory => entry.kind === 'directory')
-        .forEach(dir => {
-          dir.children = sortEntries(dir.children);
-        });
-      
-      return sorted;
-    };
-    
-    return sortEntries(root);
+    // Sort by path to get proper hierarchy ordering
+    return flatEntries.sort((a, b) => a.path.localeCompare(b.path));
   };
 
   // Function to read vault hierarchy

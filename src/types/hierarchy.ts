@@ -7,6 +7,8 @@ export interface VaultEntry {
   name: string;
   path: string;
   kind: 'file' | 'directory';
+  depth?: number; // Depth in the hierarchy based on dot notation
+  hasNote?: boolean; // Whether this entry has an actual file
 }
 
 // File-specific entry type

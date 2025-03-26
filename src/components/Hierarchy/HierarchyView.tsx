@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { Folder, FileText, Loader } from 'lucide-react';
+import { FileText, Loader } from 'lucide-react';
 import { VaultEntry, VaultFile } from '../../types/hierarchy';
 
 interface HierarchyViewProps {
@@ -11,39 +11,62 @@ interface HierarchyViewProps {
 // HierarchyNode component for rendering individual entry
 const HierarchyNode: FC<{ 
   entry: VaultEntry; 
-  depth: number; 
   onFileSelect?: (file: VaultFile) => void;
-}> = ({ entry, depth, onFileSelect }) => {
-  // Reduce indentation per level
-  const paddingLeft = `${depth * 0.5}rem`;
+}> = ({ entry, onFileSelect }) => {
+  // Calculate indentation based on the path depth
+  const getIndentation = (name: string) => {
+    const segments = name.split('.');
+    return `${0.75 + ((segments.length - 1) * 0.5)}rem`;
+  };
+  
+  // Determine color based on depth level
+  const getIconColor = (depth = 1, hasNote = true) => {
+    // Base colors by level
+    const colors = [
+      'text-blue-500',      // Level 1
+      'text-emerald-500',   // Level 2
+      'text-amber-500',     // Level 3
+      'text-violet-500',    // Level 4
+      'text-pink-500',      // Level 5
+      'text-red-500'        // Level 6+
+    ];
+    
+    // Fallback to last color for deeper levels
+    const colorIndex = Math.min(depth - 1, colors.length - 1);
+    
+    // Return grayed out version if this level doesn't have a note
+    return hasNote ? colors[colorIndex] : 'text-gray-400';
+  };
+  
+  // Helper to format the display name
+  const formatDisplayName = (name: string) => {
+    // Get the last segment for display, without repeating hierarchy
+    const segments = name.split('.');
+    return segments[segments.length - 1];
+  };
+  
+  // Get the depth from the path
+  const depth = entry.depth || entry.name.split('.').length;
+  
+  // Whether this entry has an actual note file
+  const hasNote = entry.hasNote !== undefined ? entry.hasNote : true;
   
   return (
-    <li className="py-0.5">
+    <li className="py-0">
       <div 
-        className={`flex items-center gap-0.5 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 py-0.5 px-1 leading-snug ${entry.kind === 'file' ? 'cursor-pointer' : ''}`}
-        style={{ paddingLeft }}
-        onClick={entry.kind === 'file' && onFileSelect ? () => onFileSelect(entry as VaultFile) : undefined}
+        className={`flex items-center gap-1 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 py-[2px] px-1 leading-tight ${hasNote ? 'cursor-pointer' : 'cursor-default'}`}
+        style={{ paddingLeft: getIndentation(entry.name) }}
+        onClick={hasNote && onFileSelect ? () => onFileSelect(entry as VaultFile) : undefined}
       >
-        {entry.kind === 'directory' ? (
-          <Folder size={13} className="text-blue-500 flex-shrink-0" />
-        ) : (
-          <FileText size={13} className="text-emerald-500 flex-shrink-0" />
-        )}
-        <span className="truncate">{entry.name}</span>
+        <FileText 
+          size={13} 
+          className={`flex-shrink-0 ${getIconColor(depth, hasNote)}`} 
+        />
+        
+        <span className={`font-medium ${!hasNote ? 'text-gray-500 dark:text-gray-400' : ''}`}>
+          {formatDisplayName(entry.name)}
+        </span>
       </div>
-      
-      {entry.kind === 'directory' && entry.children && entry.children.length > 0 && (
-        <ul className="list-none">
-          {entry.children.map((child) => (
-            <HierarchyNode 
-              key={child.path} 
-              entry={child} 
-              depth={depth + 1} 
-              onFileSelect={onFileSelect}
-            />
-          ))}
-        </ul>
-      )}
     </li>
   );
 };
@@ -73,11 +96,10 @@ const HierarchyView: FC<HierarchyViewProps> = ({ hierarchyData, isLoading, onFil
         Files
       </h3>
       <ul className="list-none ml-0.5">
-        {hierarchyData.map((entry) => (
+        {hierarchyData && hierarchyData.map((entry) => (
           <HierarchyNode 
             key={entry.path} 
-            entry={entry} 
-            depth={0} 
+            entry={entry}
             onFileSelect={onFileSelect}
           />
         ))}
